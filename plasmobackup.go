@@ -13,6 +13,7 @@ import (
 	"github.com/rjeczalik/notify"
 )
 
+// Different logging levels
 var (
 	Debug *log.Logger
 	Info  *log.Logger

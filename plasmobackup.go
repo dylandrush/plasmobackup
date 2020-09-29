@@ -2,17 +2,15 @@ package main
 
 import (
 	"flag"
-	"github.com/leemcloughlin/logfile"
-	"github.com/rjeczalik/notify"
-	"github.com/shirou/gopsutil/process"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
-	"time"
+
+	"github.com/leemcloughlin/logfile"
+	"github.com/rjeczalik/notify"
 )
 
 var (
@@ -106,22 +104,6 @@ func main() {
 		}
 	}()
 
-	// Log when plasmo starts and stops.
-	plasmoChan := make(chan bool)
-	go isPlasmoRunning(plasmoChan)
-	go func() {
-		for {
-			select {
-			case isRunning := <-plasmoChan:
-				if isRunning {
-					Info.Println("Plasmo is running.")
-				} else {
-					Info.Println("Plasmo has stopped.")
-				}
-			}
-		}
-	}()
-
 	eventChan := make(chan notify.EventInfo, 1)
 	if err := notify.Watch(sourcePath+"\\...", eventChan, notify.Write); err != nil {
 		Error.Panicf("Could not watch directory \"%s\": %s\n", sourcePath, err)
@@ -136,39 +118,6 @@ func main() {
 				Info.Printf("Copied \"%s\" into \"%s\"\n", eventInfo.Path(), outputPath)
 			}
 		}()
-	}
-
-}
-
-func isPlasmoRunning(c chan bool) {
-	var plasmoProcess *process.Process
-	throttle := time.Tick(5000 * time.Millisecond)
-	isStarted := false
-	for !isStarted {
-		allProcs, _ := process.Processes()
-		for _, proc := range allProcs {
-			if name, _ := proc.Name(); name == "pA5.exe" {
-				plasmoProcess = proc
-				isStarted = true
-				break
-			}
-		}
-		if isStarted {
-			debug.FreeOSMemory()
-			c <- true
-			for {
-				isRunning, err := plasmoProcess.IsRunning()
-				if err != nil || !isRunning {
-					c <- false
-					isStarted = false
-					break
-				}
-				debug.FreeOSMemory()
-				<-throttle
-			}
-		}
-		debug.FreeOSMemory()
-		<-throttle
 	}
 }
 
